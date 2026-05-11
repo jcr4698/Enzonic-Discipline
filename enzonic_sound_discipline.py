@@ -83,21 +83,21 @@ async def discipline():
 	print(f">>> LOUD NOISE DETECTED! Recording in progress...")
 	await notify_me()
 	
-	# # Play the discipline sound
-	# discipline_sound = await asyncio.create_subprocess_exec(
-	# 	'curl', '-X', 'POST', ENZONIC_API_URL, '-u', ENZONIC_API_CREDS, '-H', ENZONIC_DISC_SOUND[0], '-d', ENZONIC_DISC_SOUND[1],
-	# 	stdout=asyncio.subprocess.DEVNULL,
-	# 	stderr=asyncio.subprocess.DEVNULL,
-	# 	stdin=asyncio.subprocess.DEVNULL
-	# )
-	# try:
-	# 	# run discipline sound
-	# 	stdout, stderr = await asyncio.wait_for(discipline_sound.communicate(), timeout=3.0)
-	# except asyncio.TimeoutError:
-	# 	# API failed to return a response
-	# 	print("Process timed out after 3 seconds.")
-	# 	discipline_sound.kill()
-	# 	sys.exit()
+	# Play the discipline sound
+	discipline_sound = await asyncio.create_subprocess_exec(
+		'curl', '-X', 'POST', ENZONIC_API_URL, '-u', ENZONIC_API_CREDS, '-H', ENZONIC_DISC_SOUND[0], '-d', ENZONIC_DISC_SOUND[1],
+		stdout=asyncio.subprocess.DEVNULL,
+		stderr=asyncio.subprocess.DEVNULL,
+		stdin=asyncio.subprocess.DEVNULL
+	)
+	try:
+		# run discipline sound
+		stdout, stderr = await asyncio.wait_for(discipline_sound.communicate(), timeout=3.0)
+	except asyncio.TimeoutError:
+		# API failed to return a response
+		print("Process timed out after 3 seconds.")
+		discipline_sound.kill()
+		sys.exit()
 
 	# Hold detection to let sound play and recording audio
 	await asyncio.sleep(DETECTED_AUDIO_DURATION)
