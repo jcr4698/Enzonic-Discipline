@@ -1,0 +1,9 @@
+audio_recs/
+enzo_env/
+testing/
+
+# cache
+.DS_Store
+
+# app credentials
+creds.py
