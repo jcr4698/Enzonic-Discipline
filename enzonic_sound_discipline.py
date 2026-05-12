@@ -1,3 +1,5 @@
+#!/mnt/c/Users/jcaj3/Projects/personal/bark_detect/bark_env/bin/python3
+
 import sys
 import numpy as np
 from datetime import datetime
@@ -11,6 +13,7 @@ import asyncio
 import sounddevice as sd
 
 # Audio recording
+from pathlib import Path
 import wave
 from collections import deque
 
@@ -38,15 +41,35 @@ audio_buffer = deque(maxlen=max_blocks) # initialize the audio buffer for record
 recn = 0 # current sound detection index
 is_busy = False # flag for preventing detection loop (ignore detections when 'True')
 
-async def notify_me():
-	""" Send an email notification. """
+async def notify_bark_detection():
+	""" Send an email notification of bark detection. """
 
 	# Prepare message
 	msg = EmailMessage()
-	msg['Subject'] = 'Noise detected'
+	msg['Subject'] = 'Enzonic: commotion detected'
 	msg['From'] = EMAIL_ADDR
 	msg['To'] = EMAIL_ADDR
-	msg.set_content(f"Loud noise detected on Enzo Cam.")
+	msg.set_content(f"Loud noise detected in your apartment.")
+
+	# Forward message to receiver
+	await send(
+		msg,
+		hostname="smtp.gmail.com",
+		port=587,
+		username=EMAIL_ADDR,
+		password=EMAIL_KEY,
+		start_tls=True
+	)
+
+async def notify_api_failure():
+	""" Send an email notification about failed API call. """
+
+	# Prepare message
+	msg = EmailMessage()
+	msg['Subject'] = 'Enzonic: error'
+	msg['From'] = EMAIL_ADDR
+	msg['To'] = EMAIL_ADDR
+	msg.set_content(f"Application failed to send discipline request to API.")
 
 	# Forward message to receiver
 	await send(
@@ -79,9 +102,8 @@ async def discipline():
 	global is_busy
 	is_busy = True
 
-	# Notify user
+	# Notify console
 	print(f">>> LOUD NOISE DETECTED! Recording in progress...")
-	await notify_me()
 	
 	# Play the discipline sound
 	discipline_sound = await asyncio.create_subprocess_exec(
@@ -94,10 +116,13 @@ async def discipline():
 		# run discipline sound
 		stdout, stderr = await asyncio.wait_for(discipline_sound.communicate(), timeout=3.0)
 	except asyncio.TimeoutError:
-		# API failed to return a response
+		# API failed to return a response (end process)
 		print("Process timed out after 3 seconds.")
 		discipline_sound.kill()
 		sys.exit()
+	finally:
+		# Notify user of failure
+		await notify_api_failure()
 
 	# Hold detection to let sound play and recording audio
 	await asyncio.sleep(DETECTED_AUDIO_DURATION)
@@ -116,6 +141,9 @@ async def discipline():
 		wf.setframerate(SAMPLE_RATE)
 		wf.writeframes(recorded_bytes)
 	print(f"File saved as {FINAL_OUTPUT_FILENAME}")
+
+	# Notify user via email
+	await notify_bark_detection()
 	
 	# Process no longer busy
 	is_busy = False
@@ -125,8 +153,6 @@ def audio_monitor(audio, frames, time, status):
 
 	# Determine whether process is 'busy'
 	global is_busy
-	# if(status):
-	# 	print(status)
 	
 	# Continuously capture the last 15 seconds of audio
 	audio_int16 = (audio.copy() * INT16_SCALE).astype(np.int16)
@@ -146,6 +172,10 @@ def audio_monitor(audio, frames, time, status):
 		asyncio.run_coroutine_threadsafe(discipline(), loop)
 
 async def main():
+
+	# Create output audio directory, if it doesn't exist
+	path = Path("./audio_recs")
+	path.mkdir(parents=True, exist_ok=True)
 
 	# Initiate looping thread context
 	global loop

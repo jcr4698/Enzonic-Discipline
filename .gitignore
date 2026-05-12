@@ -1,8 +1,11 @@
+bark_detect.code-workspace
 audio_recs/
+bark_env/
 enzo_env/
 testing/
 
 # cache
+ __pycache__/
 .DS_Store
 
 # app credentials
