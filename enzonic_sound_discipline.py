@@ -116,13 +116,14 @@ async def discipline():
 		# run discipline sound
 		stdout, stderr = await asyncio.wait_for(discipline_sound.communicate(), timeout=3.0)
 	except asyncio.TimeoutError:
-		# API failed to return a response (end process)
+		# API failed to return a response
 		print("Process timed out after 3 seconds.")
-		discipline_sound.kill()
-		sys.exit()
-	finally:
+
 		# Notify user of failure
 		await notify_api_failure()
+
+		# end process
+		sys.exit()
 
 	# Hold detection to let sound play and recording audio
 	await asyncio.sleep(DETECTED_AUDIO_DURATION)
