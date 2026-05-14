@@ -141,7 +141,7 @@ async def discipline():
 		wf.setsampwidth(SAMPLE_WIDTH)
 		wf.setframerate(SAMPLE_RATE)
 		wf.writeframes(recorded_bytes)
-	print(f"File saved as {FINAL_OUTPUT_FILENAME}")
+	print(f"File saved as '{FINAL_OUTPUT_FILENAME}'")
 
 	# Notify user via email
 	await notify_bark_detection()
@@ -170,6 +170,7 @@ def audio_monitor(audio, frames, time, status):
 	# Check whether noise leve is too high
 	if(db > THRESHOLD_DB):
 		# Run steps to discipline
+		print(f"Noise Level: {db:.2f} dB")
 		asyncio.run_coroutine_threadsafe(discipline(), loop)
 
 async def main():
