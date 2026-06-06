@@ -58,7 +58,8 @@ async def notify_bark_detection():
 		port=587,
 		username=EMAIL_ADDR,
 		password=EMAIL_KEY,
-		start_tls=True
+		start_tls=True,
+		timeout=3.0
 	)
 
 async def notify_api_failure():
@@ -78,7 +79,8 @@ async def notify_api_failure():
 		port=587,
 		username=EMAIL_ADDR,
 		password=EMAIL_KEY,
-		start_tls=True
+		start_tls=True,
+		timeout=3.0
 	)
 
 def db_from_noise(audio):
@@ -108,13 +110,24 @@ async def discipline():
 	# Play the discipline sound
 	discipline_sound = await asyncio.create_subprocess_exec(
 		'curl', '-X', 'POST', ENZONIC_API_URL, '-u', ENZONIC_API_CREDS, '-H', ENZONIC_DISC_SOUND[0], '-d', ENZONIC_DISC_SOUND[1],
-		stdout=asyncio.subprocess.DEVNULL,
-		stderr=asyncio.subprocess.DEVNULL,
+		stdout=asyncio.subprocess.PIPE,
+		# stdout=asyncio.subprocess.DEVNULL,
+		stderr=asyncio.subprocess.PIPE,
 		stdin=asyncio.subprocess.DEVNULL
 	)
 	try:
 		# run discipline sound
 		stdout, stderr = await asyncio.wait_for(discipline_sound.communicate(), timeout=3.0)
+		if('Failed' in stderr.decode()):
+			print(stderr)
+			# API failed to return a response
+			print("Process failed to connect to server.")
+
+			# Notify user of failure
+			await notify_api_failure()
+
+			# end process
+			sys.exit()
 	except asyncio.TimeoutError:
 		# API failed to return a response
 		print("Process timed out after 3 seconds.")
@@ -124,6 +137,8 @@ async def discipline():
 
 		# end process
 		sys.exit()
+	except:
+		print("SOMETHING ELSE")
 
 	# Hold detection to let sound play and recording audio
 	await asyncio.sleep(DETECTED_AUDIO_DURATION)
@@ -199,6 +214,11 @@ if __name__ == "__main__":
 	except Exception:
 		print("\nUnexpected error occurred.")
 		sys.exit()
+	except RuntimeError as e:
+		if "Event loop is closed" in str(e):
+			print("Event loop is closed.")
+		else:
+			raise  # Re-raise if it's a different RuntimeError
 	except KeyboardInterrupt:
 		print("\nMonitoring stopped.")
 	
